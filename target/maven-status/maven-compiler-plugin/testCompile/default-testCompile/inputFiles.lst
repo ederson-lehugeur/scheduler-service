@@ -1,0 +1,15 @@
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/SchedulerServiceApplicationTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/adapters/messaging/RabbitMqEventPublisherTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/adapters/scheduler/RuleEvaluationJobTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/application/EvaluateRulesBatchLoadingProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/application/EvaluateRulesErrorIsolationProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/application/EvaluateRulesGroupProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/application/EvaluateRulesIndividualRuleProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/application/usecases/EvaluateRulesUseCaseImplTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/domain/entities/RuleGroupProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/domain/events/AlertTriggeredEventSerializationProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/domain/strategy/ComparisonStrategyFactoryTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/domain/strategy/ComparisonStrategyProperties.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/domain/strategy/ComparisonStrategyTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/infrastructure/config/ConfigurationSmokeTest.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/test/java/com/invest/infrastructure/config/QuartzConfigTest.java
