@@ -1,6 +1,8 @@
 spring:
   application:
     name: scheduler-service
+  jackson:
+    time-zone: ${TZ:America/Sao_Paulo}
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:investalert}
     username: ${MYSQL_USERNAME:root}
@@ -27,6 +29,7 @@ spring:
 app:
   scheduler:
     evaluation-interval-ms: ${SCHEDULER_INTERVAL_MS:300000}
+    asset-update-delay-ms: ${ASSET_UPDATE_DELAY_MS:30000}
 
 logging:
   pattern:

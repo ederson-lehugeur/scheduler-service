@@ -3,6 +3,7 @@ com/invest/domain/events/AlertTriggeredEvent.class
 com/invest/adapters/persistence/AlertMapper.class
 com/invest/domain/strategy/LessThanStrategy.class
 com/invest/adapters/persistence/RuleGroupRepositoryAdapter.class
+com/invest/infrastructure/config/AssetUpdateRabbitMqConfig.class
 com/invest/domain/entities/AlertStatus.class
 com/invest/adapters/persistence/JpaRuleGroupRepository.class
 com/invest/domain/strategy/ComparisonStrategy.class
@@ -12,6 +13,7 @@ com/invest/adapters/scheduler/package-info.class
 com/invest/domain/entities/RuleGroup$RuleGroupBuilder.class
 com/invest/domain/entities/Alert.class
 com/invest/application/usecases/package-info.class
+com/invest/domain/events/UpdateAssetsEvent$Data.class
 com/invest/adapters/persistence/JpaAlertRepository.class
 com/invest/domain/entities/RuleGroup.class
 com/invest/adapters/persistence/JpaRuleRepository.class
@@ -33,7 +35,9 @@ com/invest/domain/ports/out/RuleGroupRepository.class
 com/invest/domain/events/NotificationChannel.class
 com/invest/adapters/persistence/AssetRepositoryAdapter.class
 com/invest/adapters/scheduler/RuleEvaluationJob.class
+com/invest/domain/events/UpdateAssetsEvent.class
 com/invest/adapters/persistence/AssetMapper.class
+com/invest/domain/ports/in/RequestAssetUpdateUseCase.class
 com/invest/domain/strategy/ComparisonStrategyFactory.class
 com/invest/application/usecases/EvaluateRulesUseCaseImpl.class
 com/invest/domain/events/AlertTriggeredEvent$Data.class
@@ -54,6 +58,7 @@ com/invest/infrastructure/config/package-info.class
 com/invest/adapters/persistence/AlertEntity.class
 com/invest/domain/entities/Asset$AssetBuilder.class
 com/invest/domain/strategy/GreaterThanOrEqualStrategy.class
+com/invest/adapters/scheduler/AssetUpdateRequestJob.class
 com/invest/domain/strategy/GreaterThanStrategy.class
 com/invest/domain/ports/out/UserRepository.class
 com/invest/adapters/persistence/JpaUserRepository.class
@@ -63,11 +68,14 @@ com/invest/domain/exceptions/AssetNotFoundException.class
 com/invest/domain/strategy/ComparisonStrategyFactory$1.class
 com/invest/domain/exceptions/RuleAlreadyTriggeredException.class
 com/invest/domain/events/AlertCondition.class
+com/invest/application/usecases/RequestAssetUpdateUseCaseImpl.class
 com/invest/domain/entities/package-info.class
 com/invest/domain/entities/ComparisonOperator.class
 com/invest/domain/entities/RuleField.class
+com/invest/domain/ports/out/AssetUpdateEventPublisher.class
 com/invest/domain/exceptions/RuleNotFoundException.class
 com/invest/adapters/persistence/UserEntity.class
+com/invest/adapters/messaging/RabbitMqAssetUpdateEventPublisher.class
 com/invest/adapters/persistence/UserRepositoryAdapter.class
 com/invest/infrastructure/config/RetryConfig.class
 com/invest/domain/entities/Asset.class

@@ -4,7 +4,7 @@ spring:
   jackson:
     time-zone: ${TZ:America/Sao_Paulo}
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:investalert}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:investalert}?useUnicode=true&characterEncoding=UTF-8
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:root}
     hikari:
@@ -29,6 +29,7 @@ spring:
 app:
   scheduler:
     evaluation-interval-ms: ${SCHEDULER_INTERVAL_MS:300000}
+    asset-update-delay-ms: ${ASSET_UPDATE_DELAY_MS:30000}
 
 logging:
   pattern:

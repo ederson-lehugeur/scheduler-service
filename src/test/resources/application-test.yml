@@ -28,3 +28,4 @@ spring:
 app:
   scheduler:
     evaluation-interval-ms: 1000
+    asset-update-delay-ms: 500

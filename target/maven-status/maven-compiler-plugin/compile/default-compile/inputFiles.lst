@@ -1,4 +1,5 @@
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/SchedulerServiceApplication.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/messaging/RabbitMqAssetUpdateEventPublisher.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/messaging/RabbitMqEventPublisher.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/persistence/AlertEntity.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/persistence/AlertMapper.java
@@ -21,9 +22,11 @@
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/persistence/UserMapper.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/persistence/UserRepositoryAdapter.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/persistence/package-info.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/scheduler/AssetUpdateRequestJob.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/scheduler/RuleEvaluationJob.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/adapters/scheduler/package-info.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/application/usecases/EvaluateRulesUseCaseImpl.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/application/usecases/RequestAssetUpdateUseCaseImpl.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/application/usecases/package-info.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/entities/Alert.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/entities/AlertStatus.java
@@ -37,15 +40,18 @@
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/events/AlertCondition.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/events/AlertTriggeredEvent.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/events/NotificationChannel.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/events/UpdateAssetsEvent.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/exceptions/AssetNotFoundException.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/exceptions/InvalidRuleFieldException.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/exceptions/RuleAlreadyTriggeredException.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/exceptions/RuleNotFoundException.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/exceptions/package-info.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/in/EvaluateRulesUseCase.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/in/RequestAssetUpdateUseCase.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/in/package-info.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/AlertRepository.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/AssetRepository.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/AssetUpdateEventPublisher.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/EventPublisher.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/RuleGroupRepository.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/ports/out/RuleRepository.java
@@ -59,6 +65,7 @@
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/strategy/LessThanOrEqualStrategy.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/strategy/LessThanStrategy.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/domain/strategy/package-info.java
+/home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/infrastructure/config/AssetUpdateRabbitMqConfig.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/infrastructure/config/QuartzConfig.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/infrastructure/config/RabbitMqConfig.java
 /home/eddye/Projects/workspace-invest-alert/scheduler-service/src/main/java/com/invest/infrastructure/config/RetryConfig.java
