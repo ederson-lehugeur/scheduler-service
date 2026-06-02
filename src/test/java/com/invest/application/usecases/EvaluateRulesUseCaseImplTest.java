@@ -2,11 +2,13 @@ package com.invest.application.usecases;
 
 import com.invest.domain.entities.Alert;
 import com.invest.domain.entities.Asset;
-import com.invest.domain.entities.RuleField;
+import com.invest.domain.entities.IndicatorValue;
 import com.invest.domain.entities.RuleGroup;
 import com.invest.domain.entities.ComparisonOperator;
 import com.invest.domain.entities.Rule;
 import com.invest.domain.entities.AlertStatus;
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.ports.out.AlertRepository;
 import com.invest.domain.ports.out.AssetRepository;
 import com.invest.domain.ports.out.EventPublisher;
@@ -29,7 +31,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,7 +64,7 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldCreateAlertWithStatusPending_whenIndividualRuleIsSatisfied() {
-        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", RuleField.PRICE,
+        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(120));
         Asset asset = buildAsset("XPLG11", BigDecimal.valueOf(100));
         User user = new User("User", "user@test.com", "hash");
@@ -95,7 +96,7 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldNotCreateAlert_whenIndividualRuleIsNotSatisfied() {
-        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", RuleField.PRICE,
+        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(50));
         Asset asset = buildAsset("XPLG11", BigDecimal.valueOf(100));
 
@@ -110,9 +111,9 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldContinueEvaluation_whenOneRuleThrowsException() {
-        Rule faultyRule = buildIndividualRule(1L, 10L, "FAULTY", RuleField.PRICE,
+        Rule faultyRule = buildIndividualRule(1L, 10L, "FAULTY", IndicatorType.PRICE,
                 ComparisonOperator.GREATER_THAN, BigDecimal.valueOf(50));
-        Rule validRule = buildIndividualRule(2L, 10L, "XPLG11", RuleField.PRICE,
+        Rule validRule = buildIndividualRule(2L, 10L, "XPLG11", IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(120));
         Asset asset = buildAsset("XPLG11", BigDecimal.valueOf(100));
         User user = new User("User", "user@test.com", "hash");
@@ -136,7 +137,7 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldNotCreateDuplicateAlert_whenActiveAlertAlreadyExists() {
-        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", RuleField.PRICE,
+        Rule rule = buildIndividualRule(1L, 10L, "XPLG11", IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(120));
         Asset asset = buildAsset("XPLG11", BigDecimal.valueOf(100));
 
@@ -152,9 +153,9 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldCreateAlertForGroup_whenAllGroupRulesAreSatisfied() {
-        Rule rule1 = buildGroupRule(1L, 10L, "HGLG11", 100L, RuleField.PRICE,
+        Rule rule1 = buildGroupRule(1L, 10L, "HGLG11", 100L, IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(200));
-        Rule rule2 = buildGroupRule(2L, 10L, "HGLG11", 100L, RuleField.DIVIDEND_YIELD,
+        Rule rule2 = buildGroupRule(2L, 10L, "HGLG11", 100L, IndicatorType.DIVIDEND_YIELD,
                 ComparisonOperator.GREATER_THAN, BigDecimal.valueOf(5));
         RuleGroup group = new RuleGroup(100L, 10L, "HGLG11", "Grupo FII",
                 List.of(rule1, rule2), LocalDateTime.now());
@@ -186,9 +187,9 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldNotCreateAlertForGroup_whenNotAllGroupRulesAreSatisfied() {
-        Rule rule1 = buildGroupRule(1L, 10L, "HGLG11", 100L, RuleField.PRICE,
+        Rule rule1 = buildGroupRule(1L, 10L, "HGLG11", 100L, IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN, BigDecimal.valueOf(200));
-        Rule rule2 = buildGroupRule(2L, 10L, "HGLG11", 100L, RuleField.DIVIDEND_YIELD,
+        Rule rule2 = buildGroupRule(2L, 10L, "HGLG11", 100L, IndicatorType.DIVIDEND_YIELD,
                 ComparisonOperator.GREATER_THAN, BigDecimal.valueOf(99));
         RuleGroup group = new RuleGroup(100L, 10L, "HGLG11", "Grupo FII",
                 List.of(rule1, rule2), LocalDateTime.now());
@@ -216,7 +217,7 @@ class EvaluateRulesUseCaseImplTest {
 
     @Test
     void shouldSkipRule_whenAssetNotFoundForTicker() {
-        Rule rule = buildIndividualRule(1L, 10L, "MISSING", RuleField.PRICE,
+        Rule rule = buildIndividualRule(1L, 10L, "MISSING", IndicatorType.PRICE,
                 ComparisonOperator.GREATER_THAN, BigDecimal.valueOf(50));
 
         when(ruleRepository.findAllActive()).thenReturn(List.of(rule));
@@ -229,19 +230,29 @@ class EvaluateRulesUseCaseImplTest {
     }
 
     private Rule buildIndividualRule(Long id, Long userId, String ticker,
-                                      RuleField field, ComparisonOperator operator, BigDecimal targetValue) {
-        return new Rule(id, userId, ticker, null, field, operator, targetValue,
+                                      IndicatorType indicatorType, ComparisonOperator operator, BigDecimal targetValue) {
+        return new Rule(id, userId, ticker, null, indicatorType, operator, targetValue,
                 true, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private Rule buildGroupRule(Long id, Long userId, String ticker, Long groupId,
-                                  RuleField field, ComparisonOperator operator, BigDecimal targetValue) {
-        return new Rule(id, userId, ticker, groupId, field, operator, targetValue,
+                                  IndicatorType indicatorType, ComparisonOperator operator, BigDecimal targetValue) {
+        return new Rule(id, userId, ticker, groupId, indicatorType, operator, targetValue,
                 true, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private Asset buildAsset(String ticker, BigDecimal price) {
-        return new Asset(1L, ticker, "FII " + ticker, price,
-                BigDecimal.valueOf(8.5), BigDecimal.valueOf(0.95), LocalDateTime.now());
+        return Asset.builder()
+                .id(1L)
+                .ticker(ticker)
+                .name("FII " + ticker)
+                .assetType(AssetType.FII)
+                .indicatorValues(List.of(
+                        new IndicatorValue(IndicatorType.PRICE, price),
+                        new IndicatorValue(IndicatorType.DIVIDEND_YIELD, BigDecimal.valueOf(8.5)),
+                        new IndicatorValue(IndicatorType.PVP, BigDecimal.valueOf(0.95))
+                ))
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 }

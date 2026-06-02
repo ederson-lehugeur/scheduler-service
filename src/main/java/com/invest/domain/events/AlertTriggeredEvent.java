@@ -1,6 +1,7 @@
 package com.invest.domain.events;
 
-import java.math.BigDecimal;
+import com.invest.domain.entities.IndicatorValue;
+
 import java.util.List;
 
 public record AlertTriggeredEvent(
@@ -17,9 +18,7 @@ public record AlertTriggeredEvent(
             String email,
             String assetName,
             String ticker,
-            BigDecimal currentPrice,
-            BigDecimal dividendYield,
-            BigDecimal pVp,
+            List<IndicatorValue> indicatorValues,
             String groupName,
             List<AlertCondition> conditions,
             String evaluatedAt

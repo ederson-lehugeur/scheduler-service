@@ -46,11 +46,16 @@ public class RabbitMqAssetUpdateEventPublisher implements AssetUpdateEventPublis
 
     @Recover
     public void recover(AmqpException exception, UpdateAssetsEvent event) {
+        // TODO - MDC depende da thread atual. Avaliar usar o event.correlationId().
         String correlationId = MDC.get("correlationId");
         log.error("Failed to publish UpdateAssetsEvent after retries exhausted - "
                         + "correlationId={} tickerCount={} reason={}",
                 correlationId,
                 event.data().assets().size(),
                 exception.getMessage());
+        // TODO - Avaliar o reenvio da exceção para não perder o evento gerado para envio.
+
+        // TODO - Avaliar salvar em outbox.
+        // outboxService.save(event);
     }
 }

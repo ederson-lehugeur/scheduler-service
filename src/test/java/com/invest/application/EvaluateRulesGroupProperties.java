@@ -2,6 +2,8 @@ package com.invest.application;
 
 import com.invest.application.usecases.EvaluateRulesUseCaseImpl;
 import com.invest.domain.entities.*;
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.AlertCondition;
 import com.invest.domain.events.AlertTriggeredEvent;
 import com.invest.domain.events.NotificationChannel;
@@ -21,15 +23,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Property 3: Rule group triggers correct alert and event.
- *
- * For any rule group of size N where all rules are satisfied against the asset
- * and no active alert exists for that group/ticker combination, the
- * EvaluateRulesUseCaseImpl creates a PENDING alert AND publishes an AlertTriggeredEvent
- * where: conditions has exactly N elements (one per rule in the group), groupName equals
- * the group's name, notificationChannel is EMAIL, correlationId is non-null, and data
- * fields match the corresponding group/asset/user data.
- *
- * Validates: Requirements 2.6, 3.4, 3.7, 5.2
  */
 class EvaluateRulesGroupProperties {
 
@@ -55,8 +48,6 @@ class EvaluateRulesGroupProperties {
                 ruleRepository, ruleGroupRepository, assetRepository,
                 alertRepository, userRepository, eventPublisher);
 
-        // Rules in the group have groupId set, so findAllActive returns them
-        // but they get filtered out of individual evaluation
         when(ruleRepository.findAllActive()).thenReturn(group.getRules());
         when(ruleGroupRepository.findAllWithRules()).thenReturn(List.of(group));
         when(assetRepository.findByTickers(Set.of(group.getTicker()))).thenReturn(List.of(asset));
@@ -76,7 +67,6 @@ class EvaluateRulesGroupProperties {
             MDC.remove("correlationId");
         }
 
-        // Verify alert saved with PENDING status, groupId set, ruleId null
         ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
         Alert savedAlert = alertCaptor.getValue();
@@ -86,7 +76,6 @@ class EvaluateRulesGroupProperties {
         assertThat(savedAlert.getUserId()).isEqualTo(group.getUserId());
         assertThat(savedAlert.getTicker()).isEqualTo(group.getTicker());
 
-        // Verify event published
         ArgumentCaptor<AlertTriggeredEvent> eventCaptor = ArgumentCaptor.forClass(AlertTriggeredEvent.class);
         verify(eventPublisher).publish(eventCaptor.capture());
         AlertTriggeredEvent event = eventCaptor.getValue();
@@ -101,18 +90,15 @@ class EvaluateRulesGroupProperties {
         assertThat(data.email()).isEqualTo(user.getEmail());
         assertThat(data.assetName()).isEqualTo(asset.getName());
         assertThat(data.ticker()).isEqualTo(asset.getTicker());
-        assertThat(data.currentPrice()).isEqualByComparingTo(asset.getCurrentPrice());
-        assertThat(data.dividendYield()).isEqualByComparingTo(asset.getDividendYield());
-        assertThat(data.pVp()).isEqualByComparingTo(asset.getPVp());
+        assertThat(data.indicatorValues()).isEqualTo(asset.getIndicatorValues());
         assertThat(data.groupName()).isEqualTo(group.getName());
 
-        // Conditions must have exactly N elements, one per rule in the group
         List<Rule> rules = group.getRules();
         assertThat(data.conditions()).hasSize(rules.size());
         for (int i = 0; i < rules.size(); i++) {
             AlertCondition condition = data.conditions().get(i);
             Rule rule = rules.get(i);
-            assertThat(condition.field()).isEqualTo(rule.getField());
+            assertThat(condition.indicatorType()).isEqualTo(rule.getIndicatorType());
             assertThat(condition.operator()).isEqualTo(rule.getOperator());
             assertThat(condition.targetValue()).isEqualByComparingTo(rule.getTargetValue());
         }
@@ -135,7 +121,7 @@ class EvaluateRulesGroupProperties {
     private Arbitrary<GroupAssetPair> generateGroupAndAsset(
             int ruleCount, long groupId, long userId, String ticker, String groupName) {
 
-        Arbitrary<RuleField> fields = Arbitraries.of(RuleField.values());
+        Arbitrary<IndicatorType> indicators = Arbitraries.of(IndicatorType.values());
         Arbitrary<ComparisonOperator> operators = Arbitraries.of(ComparisonOperator.values());
         Arbitrary<BigDecimal> assetValues = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(10_000))
@@ -145,24 +131,26 @@ class EvaluateRulesGroupProperties {
                 .ofScale(2);
         Arbitrary<Long> ruleIds = Arbitraries.longs().between(1, 100_000);
 
-        // Generate a list of rule specs, each with its own field, operator, offset, and ruleId
-        Arbitrary<List<RuleSpec>> ruleSpecs = Combinators.combine(fields, operators, offsets, ruleIds)
+        Arbitrary<List<RuleSpec>> ruleSpecs = Combinators.combine(indicators, operators, offsets, ruleIds)
                 .as(RuleSpec::new)
                 .list().ofSize(ruleCount);
 
-        // Combine with asset values for each field
-        return Combinators.combine(ruleSpecs, assetValues, assetValues, assetValues)
-                .as((specs, priceValue, divValue, pvpValue) -> {
-                    Map<RuleField, BigDecimal> assetFieldValues = Map.of(
-                            RuleField.PRICE, priceValue,
-                            RuleField.DIVIDEND_YIELD, divValue,
-                            RuleField.P_VP, pvpValue
-                    );
+        return Combinators.combine(ruleSpecs, assetValues)
+                .as((specs, baseValue) -> {
+                    // Build indicator values map for the asset - one per unique indicator type used
+                    Map<IndicatorType, BigDecimal> indicatorMap = new HashMap<>();
+                    for (RuleSpec spec : specs) {
+                        indicatorMap.putIfAbsent(spec.indicatorType(), baseValue);
+                    }
+
+                    List<IndicatorValue> indicatorValues = indicatorMap.entrySet().stream()
+                            .map(e -> new IndicatorValue(e.getKey(), e.getValue()))
+                            .toList();
 
                     List<Rule> rules = IntStream.range(0, specs.size())
                             .mapToObj(i -> {
                                 RuleSpec spec = specs.get(i);
-                                BigDecimal assetValue = assetFieldValues.get(spec.field());
+                                BigDecimal assetValue = indicatorMap.get(spec.indicatorType());
                                 BigDecimal targetValue = computeSatisfyingTarget(
                                         spec.operator(), assetValue, spec.offset());
 
@@ -171,7 +159,7 @@ class EvaluateRulesGroupProperties {
                                         .userId(userId)
                                         .ticker(ticker)
                                         .groupId(groupId)
-                                        .field(spec.field())
+                                        .indicatorType(spec.indicatorType())
                                         .operator(spec.operator())
                                         .targetValue(targetValue)
                                         .active(true)
@@ -194,9 +182,8 @@ class EvaluateRulesGroupProperties {
                             .id(groupId + 1000)
                             .ticker(ticker)
                             .name("Asset-" + ticker)
-                            .currentPrice(priceValue)
-                            .dividendYield(divValue)
-                            .pVp(pvpValue)
+                            .assetType(AssetType.FII)
+                            .indicatorValues(indicatorValues)
                             .updatedAt(LocalDateTime.now())
                             .build();
 
@@ -239,5 +226,5 @@ class EvaluateRulesGroupProperties {
 
     record GroupAssetPair(RuleGroup group, Asset asset) {}
 
-    record RuleSpec(RuleField field, ComparisonOperator operator, BigDecimal offset, long ruleId) {}
+    record RuleSpec(IndicatorType indicatorType, ComparisonOperator operator, BigDecimal offset, long ruleId) {}
 }

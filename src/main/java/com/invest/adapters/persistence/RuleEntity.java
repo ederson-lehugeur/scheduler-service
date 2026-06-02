@@ -1,6 +1,5 @@
 package com.invest.adapters.persistence;
 
-import com.invest.domain.entities.RuleField;
 import com.invest.domain.entities.ComparisonOperator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,9 +43,8 @@ public class RuleEntity {
     @JoinColumn(name = "group_id")
     private RuleGroupEntity group;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "field", nullable = false)
-    private RuleField field;
+    @Column(name = "indicator_type", nullable = false)
+    private String indicatorType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "operator", nullable = false)

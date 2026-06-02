@@ -3,7 +3,8 @@ package com.invest.domain.events;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.invest.domain.entities.ComparisonOperator;
-import com.invest.domain.entities.RuleField;
+import com.invest.domain.entities.IndicatorValue;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import net.jqwik.api.Arbitraries;
 import net.jqwik.api.Arbitrary;
 import net.jqwik.api.Combinators;
@@ -16,15 +17,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Property 5: AlertTriggeredEvent serialization round-trip.
- *
- * For any valid AlertTriggeredEvent instance, serializing it to JSON with Jackson
- * and then deserializing the JSON back to an AlertTriggeredEvent produces an object
- * equal to the original.
- *
- * Validates: Requirements 3.5
- */
 class AlertTriggeredEventSerializationProperties {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -81,16 +73,13 @@ class AlertTriggeredEventSerializationProperties {
                 userIds(),
                 emails(),
                 assetNames(),
-                tickers(),
-                positiveDecimals(),
-                positiveDecimals(),
-                positiveDecimals()
-        ).flatAs((alertId, userId, email, assetName, ticker, currentPrice, dividendYield, pVp) ->
-                Combinators.combine(groupNames(), conditionLists(), timestamps())
-                        .as((groupName, conditions, evaluatedAt) ->
+                tickers()
+        ).flatAs((alertId, userId, email, assetName, ticker) ->
+                Combinators.combine(indicatorValueLists(), groupNames(), conditionLists(), timestamps())
+                        .as((indicatorValues, groupName, conditions, evaluatedAt) ->
                                 new AlertTriggeredEvent.Data(
                                         alertId, userId, email, assetName, ticker,
-                                        currentPrice, dividendYield, pVp,
+                                        indicatorValues,
                                         groupName, conditions, evaluatedAt
                                 )
                         )
@@ -126,6 +115,13 @@ class AlertTriggeredEventSerializationProperties {
                 .ofScale(2);
     }
 
+    private Arbitrary<List<IndicatorValue>> indicatorValueLists() {
+        return Combinators.combine(
+                Arbitraries.of(IndicatorType.values()),
+                positiveDecimals()
+        ).as(IndicatorValue::new).list().ofMinSize(1).ofMaxSize(5);
+    }
+
     private Arbitrary<String> groupNames() {
         return Arbitraries.strings().ofMinLength(1).ofMaxLength(20).alpha().withChars(' ')
                 .injectNull(0.5);
@@ -137,7 +133,7 @@ class AlertTriggeredEventSerializationProperties {
 
     private Arbitrary<AlertCondition> conditions() {
         return Combinators.combine(
-                Arbitraries.of(RuleField.values()),
+                Arbitraries.of(IndicatorType.values()),
                 Arbitraries.of(ComparisonOperator.values()),
                 positiveDecimals()
         ).as(AlertCondition::new);

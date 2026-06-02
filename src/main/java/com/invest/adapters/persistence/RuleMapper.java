@@ -1,26 +1,11 @@
 package com.invest.adapters.persistence;
 
 import com.invest.domain.entities.Rule;
+import com.invest.domain.entities.enumerator.IndicatorType;
 
 public final class RuleMapper {
 
     private RuleMapper() {}
-
-    public static RuleEntity toEntity(Rule domain, UserEntity user,
-                                      AssetEntity asset, RuleGroupEntity group) {
-        RuleEntity entity = new RuleEntity();
-        entity.setId(domain.getId());
-        entity.setUser(user);
-        entity.setAsset(asset);
-        entity.setGroup(group);
-        entity.setField(domain.getField());
-        entity.setOperator(domain.getOperator());
-        entity.setTargetValue(domain.getTargetValue());
-        entity.setActive(domain.isActive());
-        entity.setCreatedAt(domain.getCreatedAt());
-        entity.setUpdatedAt(domain.getUpdatedAt());
-        return entity;
-    }
 
     public static Rule toDomain(RuleEntity entity) {
         Long groupId = entity.getGroup() != null ? entity.getGroup().getId() : null;
@@ -29,7 +14,7 @@ public final class RuleMapper {
                 entity.getUser().getId(),
                 entity.getAsset().getTicker(),
                 groupId,
-                entity.getField(),
+                IndicatorType.fromCode(entity.getIndicatorType()).orElseThrow(),
                 entity.getOperator(),
                 entity.getTargetValue(),
                 entity.isActive(),

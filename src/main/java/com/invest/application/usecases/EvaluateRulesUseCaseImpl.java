@@ -90,7 +90,7 @@ public class EvaluateRulesUseCaseImpl implements EvaluateRulesUseCase {
                                     "User not found for userId=" + rule.getUserId()));
 
                     AlertCondition condition = new AlertCondition(
-                            rule.getField(), rule.getOperator(), rule.getTargetValue());
+                            rule.getIndicatorType(), rule.getOperator(), rule.getTargetValue());
 
                     AlertTriggeredEvent event = buildEvent(
                             savedAlert, user, asset, null, List.of(condition));
@@ -124,7 +124,7 @@ public class EvaluateRulesUseCaseImpl implements EvaluateRulesUseCase {
 
                     List<AlertCondition> conditions = group.getRules().stream()
                             .map(rule -> new AlertCondition(
-                                    rule.getField(), rule.getOperator(), rule.getTargetValue()))
+                                    rule.getIndicatorType(), rule.getOperator(), rule.getTargetValue()))
                             .toList();
 
                     AlertTriggeredEvent event = buildEvent(
@@ -164,9 +164,7 @@ public class EvaluateRulesUseCaseImpl implements EvaluateRulesUseCase {
                 user.getEmail(),
                 asset.getName(),
                 asset.getTicker(),
-                asset.getCurrentPrice(),
-                asset.getDividendYield(),
-                asset.getPVp(),
+                asset.getIndicatorValues(),
                 groupName,
                 conditions,
                 now

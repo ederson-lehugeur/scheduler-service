@@ -1,7 +1,8 @@
 package com.invest.adapters.messaging;
 
 import com.invest.domain.entities.ComparisonOperator;
-import com.invest.domain.entities.RuleField;
+import com.invest.domain.entities.IndicatorValue;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.AlertCondition;
 import com.invest.domain.events.AlertTriggeredEvent;
 import com.invest.domain.events.NotificationChannel;
@@ -20,9 +21,6 @@ import java.util.List;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-/**
- * Validates: Requirements 3.6
- */
 @ExtendWith(MockitoExtension.class)
 class RabbitMqEventPublisherTest {
 
@@ -61,9 +59,14 @@ class RabbitMqEventPublisherTest {
     private AlertTriggeredEvent buildSampleEvent() {
         String now = LocalDateTime.now().toString();
         AlertCondition condition = new AlertCondition(
-                RuleField.PRICE,
+                IndicatorType.PRICE,
                 ComparisonOperator.LESS_THAN,
                 new BigDecimal("60.00")
+        );
+        List<IndicatorValue> indicatorValues = List.of(
+                new IndicatorValue(IndicatorType.PRICE, new BigDecimal("56.78")),
+                new IndicatorValue(IndicatorType.DIVIDEND_YIELD, new BigDecimal("8.5")),
+                new IndicatorValue(IndicatorType.PVP, new BigDecimal("0.85"))
         );
         AlertTriggeredEvent.Data data = new AlertTriggeredEvent.Data(
                 42L,
@@ -71,9 +74,7 @@ class RabbitMqEventPublisherTest {
                 "user@example.com",
                 "Banco do Brasil",
                 "BBAS3",
-                new BigDecimal("56.78"),
-                new BigDecimal("8.5"),
-                new BigDecimal("0.85"),
+                indicatorValues,
                 null,
                 List.of(condition),
                 now
