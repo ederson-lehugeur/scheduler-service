@@ -2,6 +2,8 @@ package com.invest.application;
 
 import com.invest.application.usecases.EvaluateRulesUseCaseImpl;
 import com.invest.domain.entities.*;
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.ports.out.*;
 import net.jqwik.api.*;
 import org.mockito.ArgumentCaptor;
@@ -19,12 +21,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Property 6: Batch asset loading collects all unique tickers.
- *
- * For any set of active individual rules and rule groups, the EvaluateRulesUseCaseImpl
- * calls assetRepository.findByTickers exactly once with a set containing every unique
- * ticker referenced by the rules and groups.
- *
- * Validates: Requirements 2.2, 2.3
  */
 class EvaluateRulesBatchLoadingProperties {
 
@@ -44,8 +40,6 @@ class EvaluateRulesBatchLoadingProperties {
                 ruleRepository, ruleGroupRepository, assetRepository,
                 alertRepository, userRepository, eventPublisher);
 
-        // findAllActive returns all rules (both individual and grouped)
-        // The use case filters individual rules (groupId == null) internally
         List<Rule> allRules = new ArrayList<>(input.individualRules());
         for (RuleGroup group : input.groups()) {
             allRules.addAll(group.getRules());
@@ -55,7 +49,6 @@ class EvaluateRulesBatchLoadingProperties {
         when(ruleGroupRepository.findAllWithRules()).thenReturn(input.groups());
         when(assetRepository.findByTickers(anySet())).thenReturn(input.assets());
 
-        // Stub alert checks to return true (no alerts triggered) - we only care about the batch load
         when(alertRepository.existsActiveAlert(anyLong(), anyString())).thenReturn(true);
         when(alertRepository.existsActiveAlertForGroup(anyLong(), anyString())).thenReturn(true);
 
@@ -66,17 +59,14 @@ class EvaluateRulesBatchLoadingProperties {
             MDC.remove("correlationId");
         }
 
-        // Compute expected tickers: all unique tickers from individual rules and groups
         Set<String> expectedTickers = Stream.concat(
                 input.individualRules().stream().map(Rule::getTicker),
                 input.groups().stream().map(RuleGroup::getTicker)
         ).collect(Collectors.toSet());
 
         if (expectedTickers.isEmpty()) {
-            // When no rules or groups exist, findByTickers should not be called
             verify(assetRepository, never()).findByTickers(anySet());
         } else {
-            // findByTickers called exactly once
             ArgumentCaptor<Set<String>> tickerCaptor = ArgumentCaptor.forClass(Set.class);
             verify(assetRepository, times(1)).findByTickers(tickerCaptor.capture());
 
@@ -91,7 +81,6 @@ class EvaluateRulesBatchLoadingProperties {
         Arbitrary<Integer> groupCounts = Arbitraries.integers().between(1, 3);
         Arbitrary<Long> userIds = Arbitraries.longs().between(1, 100_000);
 
-        // Ticker pool: 3-6 tickers to ensure some overlap between rules and groups
         Arbitrary<List<String>> tickerPools = Arbitraries.strings().alpha().ofLength(4)
                 .map(String::toUpperCase)
                 .list().ofMinSize(3).ofMaxSize(6).uniqueElements();
@@ -104,13 +93,12 @@ class EvaluateRulesBatchLoadingProperties {
     private Arbitrary<RulesAndGroups> generateRulesAndGroups(
             int individualCount, int groupCount, long userId, List<String> tickerPool) {
 
-        Arbitrary<RuleField> fields = Arbitraries.of(RuleField.values());
+        Arbitrary<IndicatorType> indicators = Arbitraries.of(IndicatorType.values());
         Arbitrary<ComparisonOperator> operators = Arbitraries.of(ComparisonOperator.values());
         Arbitrary<BigDecimal> targetValues = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(10_000))
                 .ofScale(2);
 
-        // Generate ticker indices to pick from the pool (allows overlap)
         Arbitrary<List<Integer>> indTickerIndices = Arbitraries.integers()
                 .between(0, tickerPool.size() - 1)
                 .list().ofSize(individualCount);
@@ -119,12 +107,11 @@ class EvaluateRulesBatchLoadingProperties {
                 .list().ofSize(groupCount);
         Arbitrary<Integer> ruleCounts = Arbitraries.integers().between(1, 3);
 
-        return Combinators.combine(indTickerIndices, grpTickerIndices, fields, operators, targetValues, ruleCounts)
-                .as((indIndices, grpIndices, field, operator, targetValue, ruleCount) -> {
+        return Combinators.combine(indTickerIndices, grpTickerIndices, indicators, operators, targetValues, ruleCounts)
+                .as((indIndices, grpIndices, indicatorType, operator, targetValue, ruleCount) -> {
                     List<Rule> individualRules = new ArrayList<>();
                     Set<String> allTickers = new HashSet<>();
 
-                    // Build individual rules
                     for (int i = 0; i < indIndices.size(); i++) {
                         String ticker = tickerPool.get(indIndices.get(i));
                         allTickers.add(ticker);
@@ -134,7 +121,7 @@ class EvaluateRulesBatchLoadingProperties {
                                 .userId(userId)
                                 .ticker(ticker)
                                 .groupId(null)
-                                .field(field)
+                                .indicatorType(indicatorType)
                                 .operator(operator)
                                 .targetValue(targetValue)
                                 .active(true)
@@ -143,7 +130,6 @@ class EvaluateRulesBatchLoadingProperties {
                                 .build());
                     }
 
-                    // Build rule groups
                     List<RuleGroup> groups = new ArrayList<>();
                     for (int g = 0; g < grpIndices.size(); g++) {
                         String ticker = tickerPool.get(grpIndices.get(g));
@@ -157,7 +143,7 @@ class EvaluateRulesBatchLoadingProperties {
                                     .userId(userId)
                                     .ticker(ticker)
                                     .groupId(groupId)
-                                    .field(field)
+                                    .indicatorType(indicatorType)
                                     .operator(operator)
                                     .targetValue(targetValue)
                                     .active(true)
@@ -176,15 +162,17 @@ class EvaluateRulesBatchLoadingProperties {
                                 .build());
                     }
 
-                    // Build assets for all unique tickers
                     List<Asset> assets = allTickers.stream()
                             .map(ticker -> Asset.builder()
                                     .id((long) ticker.hashCode())
                                     .ticker(ticker)
                                     .name("Asset-" + ticker)
-                                    .currentPrice(BigDecimal.valueOf(100))
-                                    .dividendYield(BigDecimal.valueOf(5))
-                                    .pVp(BigDecimal.ONE)
+                                    .assetType(AssetType.FII)
+                                    .indicatorValues(List.of(
+                                            new IndicatorValue(IndicatorType.PRICE, BigDecimal.valueOf(100)),
+                                            new IndicatorValue(IndicatorType.DIVIDEND_YIELD, BigDecimal.valueOf(5)),
+                                            new IndicatorValue(IndicatorType.PVP, BigDecimal.ONE)
+                                    ))
                                     .updatedAt(LocalDateTime.now())
                                     .build())
                             .toList();

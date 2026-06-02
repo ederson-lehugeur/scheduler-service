@@ -1,25 +1,33 @@
 package com.invest.adapters.persistence;
 
+import com.invest.domain.entities.enumerator.AssetType;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "asset")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class AssetEntity {
 
@@ -33,14 +41,14 @@ public class AssetEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "current_price", nullable = false, precision = 19, scale = 4)
-    private BigDecimal currentPrice;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "asset_type", nullable = false)
+    private AssetType assetType;
 
-    @Column(name = "dividend_yield", nullable = false, precision = 19, scale = 4)
-    private BigDecimal dividendYield;
-
-    @Column(name = "p_vp", nullable = false, precision = 19, scale = 4)
-    private BigDecimal pVp;
+    @OneToMany(mappedBy = "asset", fetch = FetchType.LAZY,
+               cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AssetIndicatorValueEntity> indicatorValues = new ArrayList<>();
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;

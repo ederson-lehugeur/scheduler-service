@@ -2,8 +2,8 @@ package com.invest.application.usecases;
 
 import com.invest.domain.entities.ComparisonOperator;
 import com.invest.domain.entities.Rule;
-import com.invest.domain.entities.RuleField;
 import com.invest.domain.entities.RuleGroup;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.UpdateAssetsEvent;
 import com.invest.domain.ports.out.AssetUpdateEventPublisher;
 import com.invest.domain.ports.out.RuleGroupRepository;
@@ -128,7 +128,7 @@ class RequestAssetUpdateUseCaseImplTest {
                 .userId(1L)
                 .ticker(ticker)
                 .groupId(groupId)
-                .field(RuleField.PRICE)
+                .indicatorType(IndicatorType.PRICE)
                 .operator(ComparisonOperator.GREATER_THAN)
                 .targetValue(BigDecimal.TEN)
                 .active(true)

@@ -4,7 +4,7 @@ spring:
   jackson:
     time-zone: ${TZ:America/Sao_Paulo}
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:investalert}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:investalert}?useUnicode=true&characterEncoding=UTF-8
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:root}
     hikari:
@@ -21,6 +21,8 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+#    publisher-confirm-type: correlated
+#    publisher-returns: true
   quartz:
     job-store-type: memory
     properties:

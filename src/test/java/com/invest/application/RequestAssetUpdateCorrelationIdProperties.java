@@ -3,7 +3,7 @@ package com.invest.application;
 import com.invest.application.usecases.RequestAssetUpdateUseCaseImpl;
 import com.invest.domain.entities.ComparisonOperator;
 import com.invest.domain.entities.Rule;
-import com.invest.domain.entities.RuleField;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.UpdateAssetsEvent;
 import com.invest.domain.ports.out.AssetUpdateEventPublisher;
 import com.invest.domain.ports.out.RuleGroupRepository;
@@ -20,14 +20,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-/**
- * Property 4: CorrelationId do MDC propagado para o evento.
- *
- * For any UUID set in the MDC as correlationId before use case execution,
- * the correlationId field of the published UpdateAssetsEvent must equal the MDC value.
- *
- * Validates: Requirement 4.3
- */
 class RequestAssetUpdateCorrelationIdProperties {
 
     @Property
@@ -44,7 +36,7 @@ class RequestAssetUpdateCorrelationIdProperties {
                 .userId(1L)
                 .ticker("PETR4")
                 .groupId(null)
-                .field(RuleField.PRICE)
+                .indicatorType(IndicatorType.PRICE)
                 .operator(ComparisonOperator.GREATER_THAN)
                 .targetValue(BigDecimal.TEN)
                 .active(true)

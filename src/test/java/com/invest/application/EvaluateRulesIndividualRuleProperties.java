@@ -2,6 +2,8 @@ package com.invest.application;
 
 import com.invest.application.usecases.EvaluateRulesUseCaseImpl;
 import com.invest.domain.entities.*;
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.AlertCondition;
 import com.invest.domain.events.AlertTriggeredEvent;
 import com.invest.domain.events.NotificationChannel;
@@ -20,15 +22,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Property 2: Individual rule triggers correct alert and event.
- *
- * For any active individual rule (without group) and any asset where rule.evaluate(asset)
- * is true and no active alert exists for that rule/ticker combination, the
- * EvaluateRulesUseCaseImpl creates a PENDING alert AND publishes an AlertTriggeredEvent
- * where: conditions has exactly 1 element matching the rule's field/operator/targetValue,
- * groupName is null, notificationChannel is EMAIL, correlationId is non-null, and data
- * fields match the corresponding rule/asset/user data.
- *
- * Validates: Requirements 2.5, 3.3, 3.7, 5.2
  */
 class EvaluateRulesIndividualRuleProperties {
 
@@ -41,7 +34,6 @@ class EvaluateRulesIndividualRuleProperties {
         Rule rule = pair.rule();
         Asset asset = pair.asset();
 
-        // Align userId between rule and user
         user.setId(rule.getUserId());
 
         RuleRepository ruleRepository = mock(RuleRepository.class);
@@ -74,7 +66,6 @@ class EvaluateRulesIndividualRuleProperties {
             MDC.remove("correlationId");
         }
 
-        // Verify alert saved with PENDING status
         ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
         Alert savedAlert = alertCaptor.getValue();
@@ -84,7 +75,6 @@ class EvaluateRulesIndividualRuleProperties {
         assertThat(savedAlert.getTicker()).isEqualTo(rule.getTicker());
         assertThat(savedAlert.getGroupId()).isNull();
 
-        // Verify event published
         ArgumentCaptor<AlertTriggeredEvent> eventCaptor = ArgumentCaptor.forClass(AlertTriggeredEvent.class);
         verify(eventPublisher).publish(eventCaptor.capture());
         AlertTriggeredEvent event = eventCaptor.getValue();
@@ -99,21 +89,19 @@ class EvaluateRulesIndividualRuleProperties {
         assertThat(data.email()).isEqualTo(user.getEmail());
         assertThat(data.assetName()).isEqualTo(asset.getName());
         assertThat(data.ticker()).isEqualTo(asset.getTicker());
-        assertThat(data.currentPrice()).isEqualByComparingTo(asset.getCurrentPrice());
-        assertThat(data.dividendYield()).isEqualByComparingTo(asset.getDividendYield());
-        assertThat(data.pVp()).isEqualByComparingTo(asset.getPVp());
+        assertThat(data.indicatorValues()).isEqualTo(asset.getIndicatorValues());
         assertThat(data.groupName()).isNull();
 
         assertThat(data.conditions()).hasSize(1);
         AlertCondition condition = data.conditions().get(0);
-        assertThat(condition.field()).isEqualTo(rule.getField());
+        assertThat(condition.indicatorType()).isEqualTo(rule.getIndicatorType());
         assertThat(condition.operator()).isEqualTo(rule.getOperator());
         assertThat(condition.targetValue()).isEqualByComparingTo(rule.getTargetValue());
     }
 
     @Provide
     Arbitrary<RuleAssetPair> satisfiedRuleAndAsset() {
-        Arbitrary<RuleField> fields = Arbitraries.of(RuleField.values());
+        Arbitrary<IndicatorType> indicators = Arbitraries.of(IndicatorType.values());
         Arbitrary<ComparisonOperator> operators = Arbitraries.of(ComparisonOperator.values());
         Arbitrary<BigDecimal> values = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(10_000))
@@ -121,8 +109,8 @@ class EvaluateRulesIndividualRuleProperties {
         Arbitrary<Long> ids = Arbitraries.longs().between(1, 100_000);
         Arbitrary<String> tickers = Arbitraries.strings().alpha().ofLength(5).map(String::toUpperCase);
 
-        return Combinators.combine(fields, operators, values, values, ids, ids, tickers)
-                .as((field, operator, assetValue, baseTarget, ruleId, userId, ticker) -> {
+        return Combinators.combine(indicators, operators, values, values, ids, ids, tickers)
+                .as((indicatorType, operator, assetValue, baseTarget, ruleId, userId, ticker) -> {
                     BigDecimal targetValue = computeSatisfyingTarget(operator, assetValue, baseTarget);
 
                     Rule rule = Rule.builder()
@@ -130,7 +118,7 @@ class EvaluateRulesIndividualRuleProperties {
                             .userId(userId)
                             .ticker(ticker)
                             .groupId(null)
-                            .field(field)
+                            .indicatorType(indicatorType)
                             .operator(operator)
                             .targetValue(targetValue)
                             .active(true)
@@ -138,13 +126,16 @@ class EvaluateRulesIndividualRuleProperties {
                             .updatedAt(LocalDateTime.now())
                             .build();
 
+                    List<IndicatorValue> indicatorValues = List.of(
+                            new IndicatorValue(indicatorType, assetValue)
+                    );
+
                     Asset asset = Asset.builder()
                             .id(ruleId + 1000)
                             .ticker(ticker)
                             .name("Asset-" + ticker)
-                            .currentPrice(field == RuleField.PRICE ? assetValue : BigDecimal.valueOf(100))
-                            .dividendYield(field == RuleField.DIVIDEND_YIELD ? assetValue : BigDecimal.valueOf(5))
-                            .pVp(field == RuleField.P_VP ? assetValue : BigDecimal.ONE)
+                            .assetType(AssetType.FII)
+                            .indicatorValues(indicatorValues)
                             .updatedAt(LocalDateTime.now())
                             .build();
 
@@ -172,10 +163,6 @@ class EvaluateRulesIndividualRuleProperties {
         return Arbitraries.longs().between(1, 100_000);
     }
 
-    /**
-     * Computes a targetValue that guarantees rule.evaluate(asset) returns true
-     * given the operator and the asset's field value.
-     */
     private static BigDecimal computeSatisfyingTarget(ComparisonOperator operator,
                                                       BigDecimal assetValue,
                                                       BigDecimal baseTarget) {

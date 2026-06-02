@@ -21,6 +21,8 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+#    publisher-confirm-type: correlated
+#    publisher-returns: true
   quartz:
     job-store-type: memory
     properties:

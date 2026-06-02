@@ -1,32 +1,30 @@
 package com.invest.adapters.persistence;
 
 import com.invest.domain.entities.Asset;
+import com.invest.domain.entities.IndicatorValue;
+import com.invest.domain.entities.enumerator.IndicatorType;
+
+import java.util.List;
 
 public final class AssetMapper {
 
     private AssetMapper() {}
 
-    public static AssetEntity toEntity(Asset domain) {
-        return new AssetEntity(
-                domain.getId(),
-                domain.getTicker(),
-                domain.getName(),
-                domain.getCurrentPrice(),
-                domain.getDividendYield(),
-                domain.getPVp(),
-                domain.getUpdatedAt()
-        );
-    }
-
     public static Asset toDomain(AssetEntity entity) {
-        return new Asset(
-                entity.getId(),
-                entity.getTicker(),
-                entity.getName(),
-                entity.getCurrentPrice(),
-                entity.getDividendYield(),
-                entity.getPVp(),
-                entity.getUpdatedAt()
-        );
+        List<IndicatorValue> indicatorValues = entity.getIndicatorValues().stream()
+                .map(iv -> new IndicatorValue(
+                        IndicatorType.fromCode(iv.getId().getIndicatorType()).orElseThrow(),
+                        iv.getValue()
+                ))
+                .toList();
+
+        return Asset.builder()
+                .id(entity.getId())
+                .ticker(entity.getTicker())
+                .name(entity.getName())
+                .assetType(entity.getAssetType())
+                .indicatorValues(indicatorValues)
+                .updatedAt(entity.getUpdatedAt())
+                .build();
     }
 }

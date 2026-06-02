@@ -2,6 +2,8 @@ package com.invest.application;
 
 import com.invest.application.usecases.EvaluateRulesUseCaseImpl;
 import com.invest.domain.entities.*;
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.ports.out.*;
 import net.jqwik.api.*;
 import org.mockito.ArgumentCaptor;
@@ -18,13 +20,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Property 4: Error isolation across rule evaluations.
- *
- * For any set of individual rules and rule groups where some evaluations throw exceptions,
- * the EvaluateRulesUseCaseImpl continues evaluating all remaining rules and groups without
- * interrupting the job execution. The number of successfully evaluated rules/groups equals
- * the total minus the failing ones.
- *
- * Validates: Requirements 2.7
  */
 class EvaluateRulesErrorIsolationProperties {
 
@@ -50,13 +45,11 @@ class EvaluateRulesErrorIsolationProperties {
         when(ruleGroupRepository.findAllWithRules()).thenReturn(List.of());
         when(assetRepository.findByTickers(anySet())).thenReturn(ruleSet.assets());
 
-        // For failing rules, existsActiveAlert throws RuntimeException
         for (Rule failingRule : ruleSet.failingRules()) {
             when(alertRepository.existsActiveAlert(eq(failingRule.getId()), eq(failingRule.getTicker())))
                     .thenThrow(new RuntimeException("Simulated failure for rule " + failingRule.getId()));
         }
 
-        // For good rules, existsActiveAlert returns false (no existing alert)
         for (Rule goodRule : ruleSet.goodRules()) {
             when(alertRepository.existsActiveAlert(eq(goodRule.getId()), eq(goodRule.getTicker())))
                     .thenReturn(false);
@@ -78,11 +71,9 @@ class EvaluateRulesErrorIsolationProperties {
             MDC.remove("correlationId");
         }
 
-        // The key property: save() is called exactly once per good rule
         int expectedSaves = ruleSet.goodRules().size();
         verify(alertRepository, times(expectedSaves)).save(any(Alert.class));
 
-        // Verify each good rule's alert was saved
         if (expectedSaves > 0) {
             ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
             verify(alertRepository, times(expectedSaves)).save(alertCaptor.capture());
@@ -100,7 +91,6 @@ class EvaluateRulesErrorIsolationProperties {
             assertThat(savedRuleIds).isEqualTo(expectedRuleIds);
         }
 
-        // Verify event published for each good rule
         verify(eventPublisher, times(expectedSaves)).publish(any());
     }
 
@@ -122,18 +112,15 @@ class EvaluateRulesErrorIsolationProperties {
                 ruleRepository, ruleGroupRepository, assetRepository,
                 alertRepository, userRepository, eventPublisher);
 
-        // All rules in groups have groupId set, so they are filtered out of individual evaluation
         when(ruleRepository.findAllActive()).thenReturn(List.of());
         when(ruleGroupRepository.findAllWithRules()).thenReturn(groupSet.allGroups());
         when(assetRepository.findByTickers(anySet())).thenReturn(groupSet.assets());
 
-        // For failing groups, existsActiveAlertForGroup throws RuntimeException
         for (RuleGroup failingGroup : groupSet.failingGroups()) {
             when(alertRepository.existsActiveAlertForGroup(eq(failingGroup.getId()), eq(failingGroup.getTicker())))
                     .thenThrow(new RuntimeException("Simulated failure for group " + failingGroup.getId()));
         }
 
-        // For good groups, existsActiveAlertForGroup returns false
         for (RuleGroup goodGroup : groupSet.goodGroups()) {
             when(alertRepository.existsActiveAlertForGroup(eq(goodGroup.getId()), eq(goodGroup.getTicker())))
                     .thenReturn(false);
@@ -155,11 +142,9 @@ class EvaluateRulesErrorIsolationProperties {
             MDC.remove("correlationId");
         }
 
-        // The key property: save() is called exactly once per good group
         int expectedSaves = groupSet.goodGroups().size();
         verify(alertRepository, times(expectedSaves)).save(any(Alert.class));
 
-        // Verify each good group's alert was saved
         if (expectedSaves > 0) {
             ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
             verify(alertRepository, times(expectedSaves)).save(alertCaptor.capture());
@@ -177,11 +162,8 @@ class EvaluateRulesErrorIsolationProperties {
             assertThat(savedGroupIds).isEqualTo(expectedGroupIds);
         }
 
-        // Verify event published for each good group
         verify(eventPublisher, times(expectedSaves)).publish(any());
     }
-
-    // --- Providers ---
 
     @Provide
     Arbitrary<RuleSetWithFailures> ruleSetWithFailures() {
@@ -197,7 +179,7 @@ class EvaluateRulesErrorIsolationProperties {
     private Arbitrary<RuleSetWithFailures> generateRuleSetWithFailures(
             int totalCount, long userId, String ticker) {
 
-        Arbitrary<RuleField> fields = Arbitraries.of(RuleField.values());
+        Arbitrary<IndicatorType> indicators = Arbitraries.of(IndicatorType.values());
         Arbitrary<ComparisonOperator> operators = Arbitraries.of(ComparisonOperator.values());
         Arbitrary<BigDecimal> assetValues = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(10_000))
@@ -206,30 +188,29 @@ class EvaluateRulesErrorIsolationProperties {
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(100))
                 .ofScale(2);
 
-        // Generate a bitmask to decide which rules fail (at least 1 good, at least 1 failing)
         Arbitrary<List<Boolean>> failFlags = Arbitraries.of(true, false)
                 .list().ofSize(totalCount)
                 .filter(flags -> flags.contains(true) && flags.contains(false));
 
-        Arbitrary<List<RuleSpec>> ruleSpecs = Combinators.combine(fields, operators, offsets)
+        Arbitrary<List<RuleSpec>> ruleSpecs = Combinators.combine(indicators, operators, offsets)
                 .as(RuleSpec::new)
                 .list().ofSize(totalCount);
 
-        return Combinators.combine(ruleSpecs, failFlags, assetValues, assetValues, assetValues)
-                .as((specs, flags, priceValue, divValue, pvpValue) -> {
-                    Map<RuleField, BigDecimal> assetFieldValues = Map.of(
-                            RuleField.PRICE, priceValue,
-                            RuleField.DIVIDEND_YIELD, divValue,
-                            RuleField.P_VP, pvpValue
-                    );
-
+        return Combinators.combine(ruleSpecs, failFlags, assetValues)
+                .as((specs, flags, baseValue) -> {
                     List<Rule> allRules = new ArrayList<>();
                     List<Rule> goodRules = new ArrayList<>();
                     List<Rule> failingRules = new ArrayList<>();
 
+                    // Build indicator values - one per indicator type used by any rule
+                    Map<IndicatorType, BigDecimal> indicatorMap = new HashMap<>();
+                    for (RuleSpec spec : specs) {
+                        indicatorMap.putIfAbsent(spec.indicatorType(), baseValue);
+                    }
+
                     for (int i = 0; i < specs.size(); i++) {
                         RuleSpec spec = specs.get(i);
-                        BigDecimal assetValue = assetFieldValues.get(spec.field());
+                        BigDecimal assetValue = indicatorMap.get(spec.indicatorType());
                         BigDecimal targetValue = computeSatisfyingTarget(
                                 spec.operator(), assetValue, spec.offset());
 
@@ -238,7 +219,7 @@ class EvaluateRulesErrorIsolationProperties {
                                 .userId(userId)
                                 .ticker(ticker)
                                 .groupId(null)
-                                .field(spec.field())
+                                .indicatorType(spec.indicatorType())
                                 .operator(spec.operator())
                                 .targetValue(targetValue)
                                 .active(true)
@@ -254,13 +235,16 @@ class EvaluateRulesErrorIsolationProperties {
                         }
                     }
 
+                    List<IndicatorValue> indicatorValues = indicatorMap.entrySet().stream()
+                            .map(e -> new IndicatorValue(e.getKey(), e.getValue()))
+                            .toList();
+
                     Asset asset = Asset.builder()
                             .id(1L)
                             .ticker(ticker)
                             .name("Asset-" + ticker)
-                            .currentPrice(priceValue)
-                            .dividendYield(divValue)
-                            .pVp(pvpValue)
+                            .assetType(AssetType.FII)
+                            .indicatorValues(indicatorValues)
                             .updatedAt(LocalDateTime.now())
                             .build();
 
@@ -283,53 +267,39 @@ class EvaluateRulesErrorIsolationProperties {
     private Arbitrary<GroupSetWithFailures> generateGroupSetWithFailures(
             int totalCount, long userId, String ticker) {
 
-        Arbitrary<RuleField> fields = Arbitraries.of(RuleField.values());
+        Arbitrary<IndicatorType> indicators = Arbitraries.of(IndicatorType.values());
         Arbitrary<ComparisonOperator> operators = Arbitraries.of(ComparisonOperator.values());
         Arbitrary<BigDecimal> offsets = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(100))
                 .ofScale(2);
-
-        // Each group has 1-3 rules
         Arbitrary<Integer> ruleCounts = Arbitraries.integers().between(1, 3);
-
-        // At least 1 good, at least 1 failing
         Arbitrary<List<Boolean>> failFlags = Arbitraries.of(true, false)
                 .list().ofSize(totalCount)
                 .filter(flags -> flags.contains(true) && flags.contains(false));
-
         Arbitrary<BigDecimal> assetValues = Arbitraries.bigDecimals()
                 .between(BigDecimal.valueOf(1), BigDecimal.valueOf(10_000))
                 .ofScale(2);
 
-        return Combinators.combine(failFlags, ruleCounts, fields, operators, offsets,
-                        assetValues, assetValues, assetValues)
-                .as((flags, ruleCount, field, operator, offset,
-                     priceValue, divValue, pvpValue) -> {
-
-                    Map<RuleField, BigDecimal> assetFieldValues = Map.of(
-                            RuleField.PRICE, priceValue,
-                            RuleField.DIVIDEND_YIELD, divValue,
-                            RuleField.P_VP, pvpValue
-                    );
+        return Combinators.combine(failFlags, ruleCounts, indicators, operators, offsets, assetValues)
+                .as((flags, ruleCount, indicatorType, operator, offset, baseValue) -> {
 
                     List<RuleGroup> allGroups = new ArrayList<>();
                     List<RuleGroup> goodGroups = new ArrayList<>();
                     List<RuleGroup> failingGroups = new ArrayList<>();
+
+                    BigDecimal targetValue = computeSatisfyingTarget(operator, baseValue, offset);
 
                     for (int g = 0; g < flags.size(); g++) {
                         long groupId = g + 1;
 
                         List<Rule> rules = new ArrayList<>();
                         for (int r = 0; r < ruleCount; r++) {
-                            BigDecimal assetValue = assetFieldValues.get(field);
-                            BigDecimal targetValue = computeSatisfyingTarget(operator, assetValue, offset);
-
                             rules.add(Rule.builder()
                                     .id(groupId * 100 + r)
                                     .userId(userId)
                                     .ticker(ticker)
                                     .groupId(groupId)
-                                    .field(field)
+                                    .indicatorType(indicatorType)
                                     .operator(operator)
                                     .targetValue(targetValue)
                                     .active(true)
@@ -355,13 +325,16 @@ class EvaluateRulesErrorIsolationProperties {
                         }
                     }
 
+                    List<IndicatorValue> indicatorValues = List.of(
+                            new IndicatorValue(indicatorType, baseValue)
+                    );
+
                     Asset asset = Asset.builder()
                             .id(1L)
                             .ticker(ticker)
                             .name("Asset-" + ticker)
-                            .currentPrice(priceValue)
-                            .dividendYield(divValue)
-                            .pVp(pvpValue)
+                            .assetType(AssetType.FII)
+                            .indicatorValues(indicatorValues)
                             .updatedAt(LocalDateTime.now())
                             .build();
 
@@ -412,5 +385,5 @@ class EvaluateRulesErrorIsolationProperties {
             List<Asset> assets,
             long userId) {}
 
-    record RuleSpec(RuleField field, ComparisonOperator operator, BigDecimal offset) {}
+    record RuleSpec(IndicatorType indicatorType, ComparisonOperator operator, BigDecimal offset) {}
 }

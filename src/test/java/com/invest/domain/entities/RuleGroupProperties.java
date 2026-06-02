@@ -1,5 +1,7 @@
 package com.invest.domain.entities;
 
+import com.invest.domain.entities.enumerator.AssetType;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.Size;
 
@@ -7,10 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Validates: Requirements 4.2
- * Feature: investments-opportunity-monitor, Property 4: Avaliacao AND de grupo de regras
- */
 class RuleGroupProperties {
 
     private static final LocalDateTime NOW = LocalDateTime.now();
@@ -23,8 +21,8 @@ class RuleGroupProperties {
     }
 
     @Provide
-    Arbitrary<RuleField> fields() {
-        return Arbitraries.of(RuleField.values());
+    Arbitrary<IndicatorType> indicatorTypes() {
+        return Arbitraries.of(IndicatorType.values());
     }
 
     @Provide
@@ -39,22 +37,32 @@ class RuleGroupProperties {
                 positiveBigDecimals(),
                 positiveBigDecimals()
         ).as((price, dy, pvp) ->
-                new Asset(1L, "XPLG11", "FII XP Log", price, dy, pvp, NOW)
+                Asset.builder()
+                        .id(1L)
+                        .ticker("XPLG11")
+                        .name("FII XP Log")
+                        .assetType(AssetType.FII)
+                        .indicatorValues(List.of(
+                                new IndicatorValue(IndicatorType.PRICE, price),
+                                new IndicatorValue(IndicatorType.DIVIDEND_YIELD, dy),
+                                new IndicatorValue(IndicatorType.PVP, pvp)
+                        ))
+                        .updatedAt(NOW)
+                        .build()
         );
     }
 
     @Provide
     Arbitrary<Rule> rules() {
         return Combinators.combine(
-                fields(),
+                indicatorTypes(),
                 operators(),
                 positiveBigDecimals()
-        ).as((field, operator, targetValue) ->
-                new Rule(1L, 1L, "XPLG11", null, field, operator, targetValue, true, NOW, NOW)
+        ).as((indicatorType, operator, targetValue) ->
+                new Rule(1L, 1L, "XPLG11", null, indicatorType, operator, targetValue, true, NOW, NOW)
         );
     }
 
-    // Feature: investments-opportunity-monitor, Property 4: Avaliacao AND de grupo de regras
     @Property(tries = 150)
     void groupEvaluate_returnsTrueIffAllRulesReturnTrue(
             @ForAll("assets") Asset asset,
@@ -72,7 +80,6 @@ class RuleGroupProperties {
                         .formatted(groupResult, allIndividuallyTrue, rulesList.size());
     }
 
-    // Feature: investments-opportunity-monitor, Property 4: Avaliacao AND de grupo de regras
     @Property(tries = 100)
     void emptyGroup_alwaysReturnsTrue(@ForAll("assets") Asset asset) {
         RuleGroup group = new RuleGroup(1L, 1L, "XPLG11", "Empty Group", List.of(), NOW);
@@ -82,7 +89,6 @@ class RuleGroupProperties {
         assert result : "Empty RuleGroup should return true (allMatch on empty stream is true)";
     }
 
-    // Feature: investments-opportunity-monitor, Property 4: Avaliacao AND de grupo de regras
     @Property(tries = 150)
     void singleRuleGroup_matchesIndividualRuleResult(
             @ForAll("assets") Asset asset,

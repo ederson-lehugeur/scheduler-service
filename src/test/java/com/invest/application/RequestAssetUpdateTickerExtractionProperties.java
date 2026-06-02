@@ -3,8 +3,8 @@ package com.invest.application;
 import com.invest.application.usecases.RequestAssetUpdateUseCaseImpl;
 import com.invest.domain.entities.ComparisonOperator;
 import com.invest.domain.entities.Rule;
-import com.invest.domain.entities.RuleField;
 import com.invest.domain.entities.RuleGroup;
+import com.invest.domain.entities.enumerator.IndicatorType;
 import com.invest.domain.events.UpdateAssetsEvent;
 import com.invest.domain.ports.out.AssetUpdateEventPublisher;
 import com.invest.domain.ports.out.RuleGroupRepository;
@@ -22,16 +22,6 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-/**
- * Property 3: Extracao de tickers unicos e construcao do evento.
- *
- * For any set of active individual rules (with groupId == null) and rule groups,
- * the published UpdateAssetsEvent must contain exactly the union set of tickers
- * from both sources, without duplicates. If the ticker set is empty, no event
- * should be published.
- *
- * Validates: Requirements 3.3, 3.4, 4.4
- */
 class RequestAssetUpdateTickerExtractionProperties {
 
     @Property
@@ -148,7 +138,7 @@ class RequestAssetUpdateTickerExtractionProperties {
                 .userId(1L)
                 .ticker(ticker)
                 .groupId(groupId)
-                .field(RuleField.PRICE)
+                .indicatorType(IndicatorType.PRICE)
                 .operator(ComparisonOperator.GREATER_THAN)
                 .targetValue(BigDecimal.TEN)
                 .active(true)
